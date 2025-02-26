@@ -5,16 +5,27 @@ import pandas as pd
 from io import BytesIO
 
 def load_css():
-    base64_font = "PASTE_YOUR_BASE64_STRING_HERE"
-    css = f"""
+    css = """
     <style>
-    @font-face {{
+    @font-face {
         font-family: 'EuclidFlex';
-        src: url(data:font/opentype;base64,{base64_font}) format('opentype');
-    }}
-    body {{
+        src: url('https://raw.githubusercontent.com/TinaMuuto/pcon-converter/main/EuclidFlex-Regular.otf') format('opentype');
+    }
+    body {
         font-family: 'EuclidFlex', sans-serif;
-    }}
+    }
+    .copy-button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        text-align: center;
+        display: inline-block;
+        font-size: 14px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -23,7 +34,9 @@ def extract_text_from_pdf(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
-            text += page.extract_text() + "\n"
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
     return text
 
 def format_text(description):
@@ -39,22 +52,29 @@ def parse_pcon_data(text):
     current_item = None
 
     for line in lines:
-        quantity_match = re.match(r"(\d+)\s+([\d\-]+)\s+([\d,]+)", line)
+        line = line.strip()
+
+        # Ignorer linjer med overskrifter og prisinformation
+        if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
+            continue
+
+        quantity_match = re.match(r"(\d+),?(\d*)\s+([\d\-]+)", line)
         if quantity_match:
-            quantity = int(float(quantity_match.group(3).replace(",", ".")))
-            current_item = {"Quantity": quantity, "Description": "", "Details": "", "ItemNumber": quantity_match.group(2)}
+            quantity = int(quantity_match.group(1))  # Henter kun heltal
+            item_number = quantity_match.group(3)
+            current_item = {"Quantity": quantity, "Description": "", "Details": "", "ItemNumber": item_number}
             extracted_data.append(current_item)
             continue
 
         if current_item is not None and "/" in line:
-            current_item["Description"] = format_text(line.strip())
+            current_item["Description"] = format_text(line)
             continue
 
-        if current_item is not None and ("Material" in line or "Color" in line or "Fabric" in line):
+        if current_item is not None and any(x in line.lower() for x in ["material", "color", "fabric"]):
             if current_item["Details"]:
-                current_item["Details"] += f", {line.strip().capitalize()}"
+                current_item["Details"] += f", {line.capitalize()}"
             else:
-                current_item["Details"] = line.strip().capitalize()
+                current_item["Details"] = line.capitalize()
 
     formatted_data = []
     structured_data = []
@@ -85,17 +105,6 @@ def main():
     ### About this tool
     This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
-    
-    **How it works:**
-    1. Upload a pCon export PDF.
-    2. The tool will process the file and extract relevant product details.
-    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
-    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
-    
-    **Example output for presentations:**
-    - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
-    - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
-    - 2 x FIVE POUF / LARGE / Remix: 113
     """)
     
     st.write("**Example of pCon PDF format:**")
@@ -111,7 +120,8 @@ def main():
 
         st.subheader("Formatted Product List")
         product_list_text = "\n".join(formatted_product_list)
-        st.text_area("Copy all", product_list_text, height=300)
+        
+        st.button("📋 Copy to Clipboard", on_click=lambda: st.session_state.update(clipboard=product_list_text))
         
         for item in formatted_product_list:
             st.write(item)
