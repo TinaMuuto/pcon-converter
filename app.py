@@ -54,19 +54,17 @@ def parse_pcon_data(text):
         if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
             continue
 
-        quantity_match = re.match(r"(\d+),?(\d*)\s+([\d\-\/]+)", line)
+        quantity_match = re.match(r"(\d+)\s+([\w\-\/]+)\s+(.+)", line)
         if quantity_match:
-            quantity = int(quantity_match.group(1))  # Henter kun heltal
-            item_number = quantity_match.group(3)
-            current_item = {"Quantity": quantity, "Description": "", "ItemNumber": item_number}
+            quantity = int(quantity_match.group(1))
+            item_number = quantity_match.group(2)
+            description = quantity_match.group(3).strip()
+            current_item = {"Quantity": quantity, "Description": format_text(description), "ItemNumber": item_number}
             extracted_data.append(current_item)
             continue
 
-        if current_item is not None:
-            if current_item["Description"]:
-                current_item["Description"] += f" {line}"  # Hvis produktnavn er fordelt på flere linjer
-            else:
-                current_item["Description"] = format_text(line)
+        if current_item is not None and line:
+            current_item["Description"] += f" {line}"  # Hvis produktnavn er fordelt på flere linjer
 
     formatted_data = []
     structured_data = []
