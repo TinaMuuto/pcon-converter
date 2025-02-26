@@ -64,7 +64,7 @@ def generate_excel(data, headers=False):
     return output
 
 def main():
-    st.title("pCon PDF Converter")
+    st.title("Muuto pCon file converter")
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
         pdf_text = extract_text_from_pdf(uploaded_file)
