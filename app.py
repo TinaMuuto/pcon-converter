@@ -83,9 +83,10 @@ def main():
     
     **Example of pCon PDF format:**
     """)
-    
-    st.file_uploader("Example PDF", type=["pdf"], disabled=True)
-    st.write("[Download Example PDF](sandbox:/mnt/data/pconexample.pdf)")
+
+    st.write("[Download Example PDF] (https://github.com/TinaMuuto/pcon-converter/blob/81cd7498301b37d669bcaeb5824f2e41b2911102/pconexample.pdf)")
+
+
     
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
