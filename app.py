@@ -14,18 +14,6 @@ def load_css():
     body {
         font-family: 'EuclidFlex', sans-serif;
     }
-    .copy-button {
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        text-align: center;
-        display: inline-block;
-        font-size: 14px;
-        margin: 4px 2px;
-        cursor: pointer;
-        border-radius: 4px;
-    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -34,66 +22,51 @@ def extract_text_from_pdf(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+            text += page.extract_text() + "\n"
     return text
 
-def format_product_name(text):
-    if "/" in text:
-        parts = text.split("/")
+def format_text(description):
+    if "/" in description:
+        parts = description.split("/")
         formatted = parts[0].upper() + " / " + " / ".join(part.strip().capitalize() for part in parts[1:])
         return formatted
-    return text.upper()
+    return description.upper()
 
 def parse_pcon_data(text):
     lines = text.split("\n")
     extracted_data = []
     current_item = None
-    capture_product_name = 2  # Antal linjer til produktnavn
 
-    for i, line in enumerate(lines):
-        line = line.strip()
-
-        # Ignorer linjer med prisinformation og metadata
-        if any(ignore in line.lower() for ignore in ["pu/eur", "it/eur", "value added tax", "gross", "position net", "measurements", "stock version"]):
-            continue
-
-        # Matcher første linje med artikelnummer og antal
-        quantity_match = re.match(r"(\d+)\s+([\w\-/]+)", line)
+    for line in lines:
+        quantity_match = re.match(r"(\d+)\s+([\d\-]+)\s+([\d,]+)", line)
         if quantity_match:
-            quantity = int(quantity_match.group(1))
-            item_number = quantity_match.group(2)
-            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductName": "", "Details": ""}
+            quantity = int(float(quantity_match.group(3).replace(",", ".")))
+            current_item = {"Quantity": quantity, "Description": "", "Details": "", "ItemNumber": quantity_match.group(2)}
             extracted_data.append(current_item)
-            capture_product_name = 2  # De næste to linjer skal bruges som produktnavn
             continue
 
-        # Matcher de næste to linjer som produktnavn
-        if capture_product_name > 0 and current_item:
-            if not current_item["ProductName"]:
-                current_item["ProductName"] = format_product_name(line)
+        if current_item is not None and "/" in line:
+            current_item["Description"] = format_text(line.strip())
+            continue
+
+        if current_item is not None and ("Material" in line or "Color" in line or "Fabric" in line):
+            if current_item["Details"]:
+                current_item["Details"] += f", {line.strip().capitalize()}"
             else:
-                current_item["ProductName"] += f" {line}"  # Hvis produktnavn er på flere linjer
-            capture_product_name -= 1
-            continue
-
-        # Matcher materialer og farver
-        if "material" in line.lower() or "color" in line.lower() or "remix" in line.lower():
-            if current_item and current_item["Details"]:
-                current_item["Details"] += f", {line.capitalize()}"
-            elif current_item:
-                current_item["Details"] = line.capitalize()
-            continue
+                current_item["Details"] = line.strip().capitalize()
 
     formatted_data = []
     structured_data = []
     for item in extracted_data:
-        formatted_entry = f"{item['Quantity']} x {item['ProductName']}"
-        if item["Details"]:
-            formatted_entry += f" / {item['Details']}"
-        formatted_data.append(formatted_entry)
-        structured_data.append([item["ItemNumber"], item["ProductName"], item["Quantity"]])
+        if item["Description"]:
+            formatted_entry = f"{item['Quantity']} x {item['Description']}"
+            if item["Details"]:
+                formatted_entry += f" / {item['Details']}"
+            formatted_data.append(formatted_entry)
+            
+            # Extract product name (text before first /)
+            product_name = item["Description"].split("/")[0].strip()
+            structured_data.append([item["ItemNumber"], product_name, item["Quantity"]])
 
     return formatted_data, structured_data
 
@@ -105,37 +78,40 @@ def generate_excel(data, headers=False):
     return output
 
 def main():
-    st.title("Muuto pCon PDF Converter")
+    st.title("pCon PDF Converter")
     load_css()
     
     st.write("""
     ### About this tool
-    This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
+    This tool allows you to upload a pCon export PDF and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
     
     **How it works:**
     1. Upload a pCon export PDF.
     2. The tool will process the file and extract relevant product details.
-    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
-    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
+    3. You will see a formatted product list below.
+    4. Download the output as either a **basic item list** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
     
-    **Example output for presentations:**
+    **Example output:**
     - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
     - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
     - 2 x FIVE POUF / LARGE / Remix: 113
+    
+    **Example of pCon PDF format:**
     """)
+    
+    st.download_button(label="Download Example PDF", data="https://github.com/TinaMuuto/pcon-converter/raw/main/pconexample.pdf", file_name="pcon_example.pdf")
     
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
         pdf_text = extract_text_from_pdf(uploaded_file)
         formatted_product_list, structured_data = parse_pcon_data(pdf_text)
-        item_list = [[row[0], row[2]] for row in structured_data]
+        item_list = [[row[0], row[2]] for row in structured_data]  # Extract item number and quantity
         excel_file_1 = generate_excel(item_list, headers=False)
         excel_file_2 = generate_excel(structured_data, headers=True)
 
         st.subheader("Formatted Product List")
         product_list_text = "\n".join(formatted_product_list)
-        
         st.text_area("Copy all", product_list_text, height=300)
         
         for item in formatted_product_list:
