@@ -112,6 +112,17 @@ def main():
     ### About this tool
     This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
+    
+    **How it works:**
+    1. Upload a pCon export PDF.
+    2. The tool will process the file and extract relevant product details.
+    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
+    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
+    
+    **Example output for presentations:**
+    - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
+    - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
+    - 2 x FIVE POUF / LARGE / Remix: 113
     """)
     
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
