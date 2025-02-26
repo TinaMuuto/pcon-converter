@@ -4,6 +4,20 @@ import re
 import pandas as pd
 from io import BytesIO
 
+def load_css():
+    css = """
+    <style>
+    @font-face {
+        font-family: 'EuclidFlex';
+        src: url('https://raw.githubusercontent.com/TinaMuuto/pcon-converter/main/EuclidFlex-Regular.otf') format('opentype');
+    }
+    body {
+        font-family: 'EuclidFlex', sans-serif;
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
 def extract_text_from_pdf(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
@@ -50,7 +64,6 @@ def parse_pcon_data(text):
                 formatted_entry += f" / {item['Details']}"
             formatted_data.append(formatted_entry)
             
-            # Extract product name (text before first /)
             product_name = item["Description"].split("/")[0].strip()
             structured_data.append([item["ItemNumber"], product_name, item["Quantity"]])
 
@@ -64,35 +77,34 @@ def generate_excel(data, headers=False):
     return output
 
 def main():
-    st.title("pCon PDF Converter")
+    st.title("Muuto pCon PDF Converter")
+    load_css()
+    
     st.write("""
     ### About this tool
-    This tool allows you to upload a pCon export PDF and automatically extract product data. 
+    This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
     
     **How it works:**
     1. Upload a pCon export PDF.
     2. The tool will process the file and extract relevant product details.
-    3. You will see a formatted product list below.
-    4. Download the output as either a **basic item list** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
+    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
+    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
     
-    **Example output:**
+    **Example output for presentations:**
     - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
     - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
     - 2 x FIVE POUF / LARGE / Remix: 113
-    
-    **Example of pCon PDF format:**
     """)
-
-    st.write("[Download Example PDF] (https://github.com/TinaMuuto/pcon-converter/blob/81cd7498301b37d669bcaeb5824f2e41b2911102/pconexample.pdf)")
-
-
+    
+    st.write("**Example of pCon PDF format:**")
+    st.markdown("[📄 Download Example PDF](https://github.com/TinaMuuto/pcon-converter/raw/main/pconexample.pdf)", unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
         pdf_text = extract_text_from_pdf(uploaded_file)
         formatted_product_list, structured_data = parse_pcon_data(pdf_text)
-        item_list = [[row[0], row[2]] for row in structured_data]  # Extract item number and quantity
+        item_list = [[row[0], row[2]] for row in structured_data]
         excel_file_1 = generate_excel(item_list, headers=False)
         excel_file_2 = generate_excel(structured_data, headers=True)
 
