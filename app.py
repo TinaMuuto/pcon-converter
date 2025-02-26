@@ -64,8 +64,30 @@ def generate_excel(data, headers=False):
     return output
 
 def main():
-    st.title("Muuto pCon PDF Converter")
-    uploaded_file = st.file_uploader("Upload PDF export from pCon", type=["pdf"])
+    st.title("pCon PDF Converter")
+    st.write("""
+    ### About this tool
+    This tool allows you to upload a pCon export PDF and automatically extract product data. 
+    The extracted data is formatted into a structured list and two downloadable Excel files.
+    
+    **How it works:**
+    1. Upload a pCon export PDF.
+    2. The tool will process the file and extract relevant product details.
+    3. You will see a formatted product list below.
+    4. Download the output as either a **basic item list** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
+    
+    **Example output:**
+    - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
+    - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
+    - 2 x FIVE POUF / LARGE / Remix: 113
+    
+    **Example of pCon PDF format:**
+    """)
+    
+    st.file_uploader("Example PDF", type=["pdf"], disabled=True)
+    st.write("[Download Example PDF](sandbox:/mnt/data/pconexample.pdf)")
+    
+    uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
         pdf_text = extract_text_from_pdf(uploaded_file)
         formatted_product_list, structured_data = parse_pcon_data(pdf_text)
@@ -73,16 +95,16 @@ def main():
         excel_file_1 = generate_excel(item_list, headers=False)
         excel_file_2 = generate_excel(structured_data, headers=True)
 
-        st.subheader("Product list formatted for presentation")
+        st.subheader("Formatted Product List")
         product_list_text = "\n".join(formatted_product_list)
         st.text_area("Copy all", product_list_text, height=300)
         
         for item in formatted_product_list:
             st.write(item)
 
-        st.subheader("Download files for order process:")
-        st.download_button(label="Download item list for order import in partner platform", data=excel_file_1, file_name="order-import.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        st.download_button(label="Download detailed product list", data=excel_file_2, file_name="detailed_product_list.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.subheader("Download Files")
+        st.download_button(label="Download Item List", data=excel_file_1, file_name="item_numbers_and_quantities.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(label="Download Detailed Product List", data=excel_file_2, file_name="detailed_product_list.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 if __name__ == "__main__":
     main()
