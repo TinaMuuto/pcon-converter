@@ -40,10 +40,6 @@ def extract_text_from_pdf(pdf_file):
     return text
 
 def format_text(description):
-    if "/" in description:
-        parts = description.split("/")
-        formatted = parts[0].upper() + " / " + " / ".join(part.strip().capitalize() for part in parts[1:])
-        return formatted
     return description.upper()
 
 def parse_pcon_data(text):
@@ -51,42 +47,34 @@ def parse_pcon_data(text):
     extracted_data = []
     current_item = None
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line = line.strip()
 
         # Ignorer linjer med overskrifter og prisinformation
         if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
             continue
 
-        quantity_match = re.match(r"(\d+),?(\d*)\s+([\d\-]+)", line)
+        quantity_match = re.match(r"(\d+),?(")*\s+([\d\-\/]+)", line)
         if quantity_match:
             quantity = int(quantity_match.group(1))  # Henter kun heltal
             item_number = quantity_match.group(3)
-            current_item = {"Quantity": quantity, "Description": "", "Details": "", "ItemNumber": item_number}
+            current_item = {"Quantity": quantity, "Description": "", "ItemNumber": item_number}
             extracted_data.append(current_item)
             continue
 
-        if current_item is not None and "/" in line:
-            current_item["Description"] = format_text(line)
-            continue
-
-        if current_item is not None and any(x in line.lower() for x in ["material", "color", "fabric"]):
-            if current_item["Details"]:
-                current_item["Details"] += f", {line.capitalize()}"
+        if current_item is not None:
+            if current_item["Description"]:
+                current_item["Description"] += f" {line}"  # Hvis produktnavn er fordelt på flere linjer
             else:
-                current_item["Details"] = line.capitalize()
+                current_item["Description"] = format_text(line)
 
     formatted_data = []
     structured_data = []
     for item in extracted_data:
         if item["Description"]:
             formatted_entry = f"{item['Quantity']} x {item['Description']}"
-            if item["Details"]:
-                formatted_entry += f" / {item['Details']}"
             formatted_data.append(formatted_entry)
-            
-            product_name = item["Description"].split("/")[0].strip()
-            structured_data.append([item["ItemNumber"], product_name, item["Quantity"]])
+            structured_data.append([item["ItemNumber"], item["Description"], item["Quantity"]])
 
     return formatted_data, structured_data
 
@@ -105,6 +93,17 @@ def main():
     ### About this tool
     This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
+    
+    **How it works:**
+    1. Upload a pCon export PDF.
+    2. The tool will process the file and extract relevant product details.
+    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
+    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
+    
+    **Example output for presentations:**
+    - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
+    - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
+    - 2 x FIVE POUF / LARGE / Remix: 113
     """)
     
     st.write("**Example of pCon PDF format:**")
