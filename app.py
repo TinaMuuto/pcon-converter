@@ -43,7 +43,7 @@ def parse_pcon_data(text):
     lines = text.split("\n")
     extracted_data = []
     current_item = None
-    capture_product_name = False
+    capture_product_name = 0  # Styrer antallet af linjer til produktnavn
 
     for line in lines:
         line = line.strip()
@@ -57,35 +57,36 @@ def parse_pcon_data(text):
         if quantity_match:
             quantity = int(quantity_match.group(1))
             item_number = quantity_match.group(2)
-            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductFamily": "", "ProductType": "", "ProductModel": "", "Color": ""}
+            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductName": "", "Details": ""}
             extracted_data.append(current_item)
-            capture_product_name = True  # Næste linje(r) skal bruges som produktnavn
+            capture_product_name = 2  # De næste to linjer er produktnavn
             continue
 
-        # Matcher produktnavn, som er skrevet med store bogstaver
-        if capture_product_name and line.isupper():
-            if current_item["ProductFamily"]:
-                current_item["ProductFamily"] += f" {line}"  # Hvis produktnavn er på flere linjer
+        # Matcher de næste to linjer som produktnavn
+        if capture_product_name > 0:
+            if current_item["ProductName"]:
+                current_item["ProductName"] += f" {line}"  # Hvis produktnavn er på flere linjer
             else:
-                current_item["ProductFamily"] = line
+                current_item["ProductName"] = line
+            capture_product_name -= 1
             continue
 
         # Matcher materialer og farver
         if "material" in line.lower() or "color" in line.lower() or "remix" in line.lower():
-            if current_item["Color"]:
-                current_item["Color"] += f", {line}"
+            if current_item["Details"]:
+                current_item["Details"] += f", {line}"
             else:
-                current_item["Color"] = line
+                current_item["Details"] = line
             continue
 
     formatted_data = []
     structured_data = []
     for item in extracted_data:
-        formatted_entry = f"{item['Quantity']} x {item['ProductFamily']}"
-        if item["Color"]:
-            formatted_entry += f" / {item['Color']}"
+        formatted_entry = f"{item['Quantity']} x {item['ProductName']}"
+        if item["Details"]:
+            formatted_entry += f" / {item['Details']}"
         formatted_data.append(formatted_entry)
-        structured_data.append([item["ItemNumber"], item["ProductFamily"], item["Quantity"]])
+        structured_data.append([item["ItemNumber"], item["ProductName"], item["Quantity"]])
 
     return formatted_data, structured_data
 
