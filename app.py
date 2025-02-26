@@ -43,13 +43,12 @@ def parse_pcon_data(text):
     lines = text.split("\n")
     extracted_data = []
     current_item = None
-    capture_product_name = 0  # Styrer antallet af linjer til produktnavn
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line = line.strip()
 
-        # Ignorer linjer med prisinformation
-        if any(ignore in line.lower() for ignore in ["pu/eur", "it/eur", "value added tax", "gross", "position net"]):
+        # Ignorer linjer med overskrifter og prisinformation
+        if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
             continue
 
         # Matcher første linje med artikelnummer og antal
@@ -57,18 +56,16 @@ def parse_pcon_data(text):
         if quantity_match:
             quantity = int(quantity_match.group(1))
             item_number = quantity_match.group(2)
-            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductName": "", "Details": ""}
+            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductFamily": "", "Details": ""}
             extracted_data.append(current_item)
-            capture_product_name = 2  # De næste to linjer er produktnavn
             continue
 
-        # Matcher de næste to linjer som produktnavn
-        if capture_product_name > 0:
-            if current_item["ProductName"]:
-                current_item["ProductName"] += f" {line}"  # Hvis produktnavn er på flere linjer
+        # Matcher produktnavn, men ekskluderer lead time og unødvendige oplysninger
+        if current_item is not None and not any(x in line.lower() for x in ["lead time", "weeks", "value added tax", "gross", "position net"]):
+            if current_item["ProductFamily"]:
+                current_item["ProductFamily"] += f" {line}"  # Hvis produktnavn er på flere linjer
             else:
-                current_item["ProductName"] = line
-            capture_product_name -= 1
+                current_item["ProductFamily"] = line
             continue
 
         # Matcher materialer og farver
@@ -82,11 +79,11 @@ def parse_pcon_data(text):
     formatted_data = []
     structured_data = []
     for item in extracted_data:
-        formatted_entry = f"{item['Quantity']} x {item['ProductName']}"
+        formatted_entry = f"{item['Quantity']} x {item['ProductFamily']}"
         if item["Details"]:
             formatted_entry += f" / {item['Details']}"
         formatted_data.append(formatted_entry)
-        structured_data.append([item["ItemNumber"], item["ProductName"], item["Quantity"]])
+        structured_data.append([item["ItemNumber"], item["ProductFamily"], item["Quantity"]])
 
     return formatted_data, structured_data
 
