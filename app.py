@@ -54,7 +54,7 @@ def parse_pcon_data(text):
         if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
             continue
 
-        quantity_match = re.match(r"(\d+),?(")*\s+([\d\-\/]+)", line)
+        quantity_match = re.match(r"(\d+),?(\d*)\s+([\d\-\/]+)", line)
         if quantity_match:
             quantity = int(quantity_match.group(1))  # Henter kun heltal
             item_number = quantity_match.group(3)
