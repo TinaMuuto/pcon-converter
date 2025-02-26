@@ -5,15 +5,16 @@ import pandas as pd
 from io import BytesIO
 
 def load_css():
-    css = """
+    base64_font = "PASTE_YOUR_BASE64_STRING_HERE"
+    css = f"""
     <style>
-    @font-face {
+    @font-face {{
         font-family: 'EuclidFlex';
-        src: url('https://raw.githubusercontent.com/TinaMuuto/pcon-converter/main/EuclidFlex-Regular.otf') format('opentype');
-    }
-    body {
+        src: url(data:font/opentype;base64,{base64_font}) format('opentype');
+    }}
+    body {{
         font-family: 'EuclidFlex', sans-serif;
-    }
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
