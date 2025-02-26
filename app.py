@@ -39,51 +39,61 @@ def extract_text_from_pdf(pdf_file):
                 text += page_text + "\n"
     return text
 
+def format_product_name(text):
+    if "/" in text:
+        parts = text.split("/")
+        formatted = parts[0].upper() + " / " + " / ".join(part.strip().capitalize() for part in parts[1:])
+        return formatted
+    return text.upper()
+
 def parse_pcon_data(text):
     lines = text.split("\n")
     extracted_data = []
     current_item = None
+    capture_product_name = False
 
     for i, line in enumerate(lines):
         line = line.strip()
 
-        # Ignorer linjer med overskrifter og prisinformation
-        if any(ignore in line.lower() for ignore in ["pos article code", "description quantity", "eur", "position net", "value added tax", "gross"]):
+        # Ignorer linjer med prisinformation og metadata
+        if any(ignore in line.lower() for ignore in ["pu/eur", "it/eur", "value added tax", "gross", "position net", "measurements", "stock version"]):
             continue
 
         # Matcher første linje med artikelnummer og antal
-        quantity_match = re.match(r"(\d+),?\d*\s+([\w\-/]+)", line)
+        quantity_match = re.match(r"(\d+)\s+([\w\-/]+)", line)
         if quantity_match:
             quantity = int(quantity_match.group(1))
             item_number = quantity_match.group(2)
-            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductFamily": "", "Details": ""}
+            current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductName": "", "Details": ""}
             extracted_data.append(current_item)
+            capture_product_name = True  # De næste linjer skal bruges som produktnavn
             continue
 
-        # Matcher produktnavn, men ekskluderer lead time og unødvendige oplysninger
-        if current_item is not None and not any(x in line.lower() for x in ["lead time", "weeks", "value added tax", "gross", "position net"]):
-            if current_item["ProductFamily"]:
-                current_item["ProductFamily"] += f" {line}"  # Hvis produktnavn er på flere linjer
+        # Matcher de næste linjer som produktnavn
+        if capture_product_name and current_item:
+            if not current_item["ProductName"]:
+                current_item["ProductName"] = format_product_name(line)
             else:
-                current_item["ProductFamily"] = line
+                current_item["ProductName"] += f" {line}"  # Hvis produktnavn er på flere linjer
+            capture_product_name = False
             continue
 
         # Matcher materialer og farver
         if "material" in line.lower() or "color" in line.lower() or "remix" in line.lower():
-            if current_item["Details"]:
-                current_item["Details"] += f", {line}"
-            else:
-                current_item["Details"] = line
+            if current_item and current_item["Details"]:
+                current_item["Details"] += f", {line.capitalize()}"
+            elif current_item:
+                current_item["Details"] = line.capitalize()
             continue
 
     formatted_data = []
     structured_data = []
     for item in extracted_data:
-        formatted_entry = f"{item['Quantity']} x {item['ProductFamily']}"
+        formatted_entry = f"{item['Quantity']} x {item['ProductName']}"
         if item["Details"]:
             formatted_entry += f" / {item['Details']}"
         formatted_data.append(formatted_entry)
-        structured_data.append([item["ItemNumber"], item["ProductFamily"], item["Quantity"]])
+        structured_data.append([item["ItemNumber"], item["ProductName"], item["Quantity"]])
 
     return formatted_data, structured_data
 
