@@ -64,8 +64,8 @@ def generate_excel(data, headers=False):
     return output
 
 def main():
-    st.title("Muuto pCon file converter")
-    uploaded_file = st.file_uploader("Upload Export PDF from pCon", type=["pdf"])
+    st.title("Muuto pCon PDF Converter")
+    uploaded_file = st.file_uploader("Upload PDF export from pCon", type=["pdf"])
     if uploaded_file is not None:
         pdf_text = extract_text_from_pdf(uploaded_file)
         formatted_product_list, structured_data = parse_pcon_data(pdf_text)
@@ -73,12 +73,15 @@ def main():
         excel_file_1 = generate_excel(item_list, headers=False)
         excel_file_2 = generate_excel(structured_data, headers=True)
 
-        st.subheader("Formatted Product List for presentation")
+        st.subheader("Product list formatted for presentation")
+        product_list_text = "\n".join(formatted_product_list)
+        st.text_area("Copy all", product_list_text, height=300)
+        
         for item in formatted_product_list:
             st.write(item)
 
-        st.subheader("Download Files")
-        st.download_button(label="Download item list for order import in platform", data=excel_file_1, file_name="product-list_order-file.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.subheader("Download files for order process:")
+        st.download_button(label="Download item list for order import in partner platform", data=excel_file_1, file_name="order-import.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         st.download_button(label="Download detailed product list", data=excel_file_2, file_name="detailed_product_list.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 if __name__ == "__main__":
