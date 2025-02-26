@@ -50,7 +50,7 @@ def parse_pcon_data(text):
     lines = text.split("\n")
     extracted_data = []
     current_item = None
-    capture_product_name = False
+    capture_product_name = 2  # Antal linjer til produktnavn
 
     for i, line in enumerate(lines):
         line = line.strip()
@@ -66,16 +66,16 @@ def parse_pcon_data(text):
             item_number = quantity_match.group(2)
             current_item = {"Quantity": quantity, "ItemNumber": item_number, "ProductName": "", "Details": ""}
             extracted_data.append(current_item)
-            capture_product_name = True  # De næste linjer skal bruges som produktnavn
+            capture_product_name = 2  # De næste to linjer skal bruges som produktnavn
             continue
 
-        # Matcher de næste linjer som produktnavn
-        if capture_product_name and current_item:
+        # Matcher de næste to linjer som produktnavn
+        if capture_product_name > 0 and current_item:
             if not current_item["ProductName"]:
                 current_item["ProductName"] = format_product_name(line)
             else:
                 current_item["ProductName"] += f" {line}"  # Hvis produktnavn er på flere linjer
-            capture_product_name = False
+            capture_product_name -= 1
             continue
 
         # Matcher materialer og farver
@@ -112,21 +112,7 @@ def main():
     ### About this tool
     This tool allows you to upload a PDF file exported from pCon and automatically extract product data. 
     The extracted data is formatted into a structured list and two downloadable Excel files.
-    
-    **How it works:**
-    1. Upload a pCon export PDF.
-    2. The tool will process the file and extract relevant product details.
-    3. You will see a formatted product list below, that you can copy/paste into relevant presentations.
-    4. Download the output as either a **basic item list, to import the products into the Muuto Partner Platform** (Item Number & Quantity) or a **detailed product list** (Item Number, Product Name, Quantity).
-    
-    **Example output for presentations:**
-    - 3 x STACKED STORAGE SYSTEM / PLINTH - 131 X 35 H: 10 CM
-    - 4 x STACKED STORAGE SYSTEM / LARGE / Material: Oak veneered MDF.
-    - 2 x FIVE POUF / LARGE / Remix: 113
     """)
-    
-    st.write("**Example of pCon PDF format:**")
-    st.markdown("[📄 Download Example PDF](https://github.com/TinaMuuto/pcon-converter/raw/main/pconexample.pdf)", unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader("Upload pCon Export PDF", type=["pdf"])
     if uploaded_file is not None:
@@ -139,7 +125,7 @@ def main():
         st.subheader("Formatted Product List")
         product_list_text = "\n".join(formatted_product_list)
         
-        st.button("📋 Copy to Clipboard", on_click=lambda: st.session_state.update(clipboard=product_list_text))
+        st.text_area("Copy all", product_list_text, height=300)
         
         for item in formatted_product_list:
             st.write(item)
